@@ -1,16 +1,22 @@
-## Video Tutorial Repository: "BCH-MplusAuto"
+---
+title: 'BCH Two-step Auxiliary Variable Integration with `MplusAutomation`'
+subtitle: '*Adding Covariates and Distal Outcome Variables to Mixture Models*'
+author: "IMMERSE Project: Adam Garber"
+date: '`r format(Sys.time(), "%B, %d,  %Y")`'
+output:
+  pdf_document: default
+  html_document: default
+---
 
-- - -
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=FALSE, message = FALSE, warning = FALSE)
+```
 
-### BCH Two-step Auxiliary Variable Integration with `MplusAutomation`
+# --------------------------------------------------------------------------------------
 
-#### *Adding Covariates and Distal Outcome Variables to Mixture Models*
-
-#### IMMERSE Project: Adam Garber
-
-- - -
-
-![](figures/IESNewLogo.jpg)
+```{r, echo=FALSE, eval=TRUE, fig.align='center', out.width="40%"}
+include_graphics("figures/IESNewLogo.jpg")
+```
 
 The Institute of Mixture Modeling for Equity-Oriented Researchers, Scholars, and Educators (`IMMERSE`) is an IES funded training grant (R305B220021) to support education scholars in integrating mixture modeling into their research.
 
@@ -20,23 +26,23 @@ The Institute of Mixture Modeling for Equity-Oriented Researchers, Scholars, and
 
 > Visit our [$\color{blue}{\text{GitHub}}$](https://github.com/immerse-ucsb/) account to follow along with this tutorial & others. 
 
-- - -
+# --------------------------------------------------------------------------------------
 
 > This `R` tutorial automates the BCH two-step axiliary variable procedure (Bolk, Croon, Hagenaars, 2004) using the `MplusAutomation` package (Hallquist & Wiley, 2018) to estimate models and extract relevant parameters. To learn more about auxiliary variable integration methods and why multi-step methods are necessary for producing un-biased estimates see Asparouhov & Muthén (2014). The name of this mehtod, BCH, stands for Bolck, Croon, & Hagenaars, the authors who developed this method (Bolk, Croon, Hagenaars, 2004).
 
-- - -
+# --------------------------------------------------------------------------------------
 
 **How to reference this tutorial:**
 
 Garber, A. C. (2021). BCH Two-step Auxiliary Variable Integration Using MplusAutomation. Retrieved from [$\color{blue}{\text{https://psyarxiv.com/wmfcj}}$](https://psyarxiv.com/wmfcj)
 
-- - -
+# --------------------------------------------------------------------------------------
 
 **Follow along! Link to `Github` repository:**
 
 $\color{blue}{\text{https://github.com/immerse-ucsb/BCH-MplusAuto}}$
 
-- - -
+# --------------------------------------------------------------------------------------
 
 Load packages
 ```{r, eval=TRUE}
@@ -46,7 +52,7 @@ library(gt)               # for pretty tables
 library(tidyverse)        # for everything else...
 ```
 
-- - -
+# --------------------------------------------------------------------------------------
 
 ### Data Source: Civil Rights Data Collection (CRDC)
 
@@ -56,7 +62,7 @@ library(tidyverse)        # for everything else...
 
 **Data access (`R`):** https://github.com/UrbanInstitute/education-data-package-r
 
-- - -
+# --------------------------------------------------------------------------------------
 
 Read in CSV data file from the `data` subfolder
 ```{r}
@@ -65,7 +71,7 @@ bch_data <- read_csv(here("data", "crdc_aux_data.csv"))
 
 ```
 
-- - -
+# --------------------------------------------------------------------------------------
 
 ```{r, eval=TRUE, echo=FALSE}
 ### Take a look at the indicators that compose the LCA ###
@@ -95,28 +101,30 @@ tab_footnote(
 
 \newpage
 
-- - -
+# --------------------------------------------------------------------------------------
 
 ## "Manual BCH Two-step" Auxiliary Variable Integration Method
 
-- - -
+# --------------------------------------------------------------------------------------
 
 
 ### Step 1 - Estimate the unconditional model with all covariate & distal outcome variables mentioned in the `auxiliary` statement. 
 
 ```{r}
+#LCA indcators: report_dis report_race report_sex counselors_fte psych_fte law_fte
+#Auxiliary variables: lunch_program read_test math_test
+
 m_step1  <- mplusObject(
   TITLE = "Step1_bch_automation", 
   VARIABLE = 
-   "categorical = report_dis report_race report_sex counselors_fte psych_fte law_fte; 
+   "categorical = ; 
    
-    usevar = report_dis report_race report_sex counselors_fte psych_fte law_fte;
+    usevar = ;
     
-    classes = c(3); 
+    classes = c(); 
     
     !!! NOTE: All auxiliary variables to be considered in the final model should be listed here !!!
-    auxiliary = 
-    lunch_program read_test math_test;",
+    auxiliary = ;",
   
   ANALYSIS = 
    "estimator = mlr; 
@@ -129,10 +137,6 @@ m_step1  <- mplusObject(
     format=free;
     Missflag= 999;",
   
-  PLOT = 
-   "type = plot3; 
-    series = report_dis report_race report_sex counselors_fte psych_fte law_fte(*);",
-  
   usevariables = colnames(bch_data),
   rdata = bch_data)
 
@@ -142,11 +146,11 @@ m_step1_fit <- mplusModeler(m_step1,
                  check=TRUE, run = TRUE, hashfilename = FALSE)
 ```
 
-- - -
+# --------------------------------------------------------------------------------------
 
 ### Extract saved data from the step 1 unconditional model.
 
-- - -
+# --------------------------------------------------------------------------------------
 
 
 Extract saved data from the step 1 model `mplusObject` named "m_step1_fit"
@@ -165,13 +169,13 @@ colnames(savedata)[colnames(savedata)=="C"] <- "N"
 
 \newpage
 
-- - -
+# --------------------------------------------------------------------------------------
 
 ### Step 2 - Estimate the model with auxiliary variables using BCH weights 
 
 Example demonstrated is a moderation model with covariate & distal outcomes.
 
-- - -
+# --------------------------------------------------------------------------------------
 
 **Specification details:**
 
@@ -186,13 +190,13 @@ m_step2  <- mplusObject(
   TITLE = "Step2_bch_automation", 
   
   VARIABLE = 
- "usevar = BCHW1-BCHW3 read_tes math_tes lunch_pr;
+ "usevar = BCHW1-BCHW3 math_irt female;
   missing are all (999); 
   classes = c(3); 
   training = BCHW1-BCHW3(bch); ",
  
   DEFINE =
- "center lunch_pr (grandmean);",
+ "center female (grandmean);",
   
   ANALYSIS = 
  "estimator = mlr; 
@@ -205,8 +209,6 @@ m_step2  <- mplusObject(
   
   %OVERALL%
   
-  C on lunch_pr;
- 
   read_tes on lunch_pr;
   read_tes;
   
@@ -288,17 +290,17 @@ m_step2_fit <- mplusModeler(m_step2,
 
 **End of 2-Step BCH Procedure**
 
-- - -
+# --------------------------------------------------------------------------------------
 
 ## Visualize results:
 
 > NOTE: The next video in this series will include a detailed tutorial on how to interpret auxiliary variable output (i.e. distal outcomes & covariates) in the context of moderation. This tutorial will also cover `R` code to generate figures for visualizing the results. 
 
-- - -
+# --------------------------------------------------------------------------------------
 
 ## References
 
-- - -
+# --------------------------------------------------------------------------------------
 
 Asparouhov, T., & Muthén, B. O.
 (2014). 
@@ -347,8 +349,6 @@ Journal of Open Source Software, 4(43), 1686, <https://doi.org/10.21105/joss.016
 
 Wickham H et al., (2019). "Welcome to the tidyverse." Journal of Open Source Software, 4(43), 1686. doi: 10.21105/joss.01686.
 
-- - -
-
-
+# --------------------------------------------------------------------------------------
 
 
