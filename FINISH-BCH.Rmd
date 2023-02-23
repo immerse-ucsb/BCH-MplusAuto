@@ -10,6 +10,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, eval=FALSE, message = FALSE, warning = FALSE)
+library(knitr); library(gt); library(tidyverse) 
 ```
 
 # --------------------------------------------------------------------------------------
@@ -28,31 +29,13 @@ The Institute of Mixture Modeling for Equity-Oriented Researchers, Scholars, and
 
 # --------------------------------------------------------------------------------------
 
-> This `R` tutorial automates the BCH two-step axiliary variable procedure (Bolk, Croon, Hagenaars, 2004) using the `MplusAutomation` package (Hallquist & Wiley, 2018) to estimate models and extract relevant parameters. To learn more about auxiliary variable integration methods and why multi-step methods are necessary for producing un-biased estimates see Asparouhov & Muthén (2014). The name of this mehtod, BCH, stands for Bolck, Croon, & Hagenaars, the authors who developed this method (Bolk, Croon, Hagenaars, 2004).
-
-# --------------------------------------------------------------------------------------
-
-**How to reference this tutorial:**
-
-Garber, A. C. (2021). BCH Two-step Auxiliary Variable Integration Using MplusAutomation. Retrieved from [$\color{blue}{\text{https://psyarxiv.com/wmfcj}}$](https://psyarxiv.com/wmfcj)
+> This `R` tutorial automates the BCH two-step axiliary variable procedure (Bolk, Croon, Hagenaars, 2004) using the `MplusAutomation` package (Hallquist & Wiley, 2018) to estimate models and extract relevant parameters. To learn more about auxiliary variable integration methods and why multi-step methods are necessary for producing un-biased estimates see Asparouhov & Muthén (2014). 
 
 # --------------------------------------------------------------------------------------
 
 **Follow along! Link to `Github` repository:**
 
 $\color{blue}{\text{https://github.com/immerse-ucsb/BCH-MplusAuto}}$
-
-# --------------------------------------------------------------------------------------
-
-Load packages
-```{r, eval=TRUE}
-library(MplusAutomation)  # a conduit between R & Mplus
-library(here)             # to locate or send files within the Rproject folder
-library(gt)               # for pretty tables
-library(tidyverse)        # for everything else...
-```
-
-# --------------------------------------------------------------------------------------
 
 ### Data Source: Civil Rights Data Collection (CRDC)
 
@@ -61,15 +44,6 @@ library(tidyverse)        # for everything else...
 **Information about CRCD:** https://www2.ed.gov/about/offices/list/ocr/data.html
 
 **Data access (`R`):** https://github.com/UrbanInstitute/education-data-package-r
-
-# --------------------------------------------------------------------------------------
-
-Read in CSV data file from the `data` subfolder
-```{r}
-
-bch_data <- read_csv(here("data", "crdc_aux_data.csv"))
-
-```
 
 # --------------------------------------------------------------------------------------
 
@@ -89,7 +63,7 @@ tribble(
 "read_test"   , "Average reading test assessment score at school",
 "math_test" , "Average math test assessment score at school" ) %>% 
 gt() %>% 
-tab_header(title = md("**LCA Indicators & Auxiliary Variables: Math Attitudes Example**"), subtitle = md("&nbsp;")) %>%
+tab_header(title = md("**LCA Indicators & Auxiliary Variables: Harassment & Staff Example**"), subtitle = md("&nbsp;")) %>%
 tab_row_group(group = "LCA Indicator Variables", rows = 1:6) %>% 
 tab_row_group(group = "Auxiliary Variables", rows = 7:9) %>%
 row_group_order(groups = c("LCA Indicator Variables","Auxiliary Variables")) %>% 
@@ -99,11 +73,26 @@ tab_footnote(
 
 ```
 
-\newpage
+# --------------------------------------------------------------------------------------
+
+Load packages
+```{r, eval=TRUE}
+library(MplusAutomation)  # a conduit between R & Mplus
+library(here)             # to locate or send files within the Rproject folder
+library(gt)               # for pretty tables
+library(tidyverse)        # for everything else...
+```
+
+Read in CSV data file from the `data` subfolder
+```{r}
+
+bch_data <- read_csv(here("data", "crdc_aux_data.csv"))
+
+```
 
 # --------------------------------------------------------------------------------------
 
-## "Manual BCH Two-step" Auxiliary Variable Integration Method
+## EXAMPLE 1: "Manual BCH Two-step" Auxiliary Variable Integration Method
 
 # --------------------------------------------------------------------------------------
 
@@ -135,10 +124,6 @@ m_step1  <- mplusObject(
     format=free;
     Missflag= 999;",
   
-  PLOT = 
-   "type = plot3; 
-    series = report_dis report_race report_sex counselors_fte psych_fte law_fte(*);",
-  
   usevariables = colnames(bch_data),
   rdata = bch_data)
 
@@ -162,20 +147,12 @@ savedata <- as.data.frame(m_step1_fit[["results"]]
                                      [["savedata"]])
 ```
 
-Rename the column in savedata for "C" and change to "N"
-```{r}
-
-colnames(savedata)[colnames(savedata)=="C"] <- "N"
-
-```
-
-\newpage
 
 # --------------------------------------------------------------------------------------
 
 ### Step 2 - Estimate the model with auxiliary variables using BCH weights 
 
-Example demonstrated is a moderation model with covariate & distal outcomes.
+Example demonstrated is a model with a covariate control variable & two distal outcomes.
 
 # --------------------------------------------------------------------------------------
 
@@ -183,7 +160,6 @@ Example demonstrated is a moderation model with covariate & distal outcomes.
 
 - This example contains two distal outcome variables (`read_tes` & `math_tes`) and one binary covariate (`lunch_pr`).
 - Under each class-specific statement (e.g., `%C#1%`) the distal outcome is mentioned to estimate the intercept mean (in square brackets) & variance parameters. 
-- Moderation is specified by mentioning the `"outcome ON covariate;"` syntax under each of the class-specific statements. 
 - Note that the binary covariate is centered so that reported distal means (intercepts) are estimated at the weighted average of `lunch_pr`.
 
 ```{r}
@@ -192,13 +168,13 @@ m_step2  <- mplusObject(
   TITLE = "Step2_bch_automation", 
   
   VARIABLE = 
- "usevar = BCHW1-BCHW3 read_tes math_tes lunch_pr;
+ "usevar = BCHW1-BCHW3 lunch_pr read_tes math_tes;
   missing are all (999); 
   classes = c(3); 
   training = BCHW1-BCHW3(bch); ",
  
   DEFINE =
- "center lunch_pr (grandmean);",
+  "center lunch_pr (grandmean);",
   
   ANALYSIS = 
  "estimator = mlr; 
@@ -211,57 +187,42 @@ m_step2  <- mplusObject(
   
   %OVERALL%
   
-  C on lunch_pr;
- 
-  read_tes on lunch_pr;
+  c on lunch_pr;                 !!! estimate covariate as predictor of latent class !!!
   read_tes;
-  
-  math_tes on lunch_pr;
   math_tes;
 
   %C#1%
 
   [read_tes](m01);               !!! estimate conditional intercept mean !!!
   read_tes;                      !!! estimate conditional intercept variance !!!
-  read_tes on lunch_pr (s01);    !!! estimate conditional regression !!!
 
   [math_tes] (m1);
   math_tes;
-  math_tes on lunch_pr (s1);
 
   %C#2%
 
   [read_tes](m02);
   read_tes;
-  read_tes on lunch_pr (s02);
 
   [math_tes] (m2);
   math_tes;
-  math_tes on lunch_pr (s2);
   
   %C#3%
 
   [read_tes](m03);
   read_tes;
-  read_tes on lunch_pr (s03);
 
   [math_tes] (m3);
-  math_tes;
-  math_tes on lunch_pr (s3);  ",
+  math_tes;  ",
   
   MODELCONSTRAINT = 
  "New (rdiff12 rdiff13
-  rdiff23 rslope12 rslope13
-  rslope23 mdiff12 mdiff13
-  mdiff23 mslope12 mslope13
-  mslope23);
+  rdiff23 mdiff12 mdiff13
+  mdiff23);
 
   rdiff12 = m1-m2;   mdiff12 = m01-m02;
   rdiff13 = m1-m3;   mdiff13 = m01-m03;
-  rdiff23 = m2-m3;   mdiff23 = m02-m03;
-  rslope12 = s1-s2;  mslope12 = s01-s02;
-  rslope13 = s1-s3;  mslope13 = s01-s03;
-  rslope23 = s2-s3;  mslope23 = s02-s03;",
+  rdiff23 = m2-m3;   mdiff23 = m02-m03; ",
   
   MODELTEST =
   ## NOTE: Only a single Wald test can be conducted per model run. Therefore, 
@@ -269,30 +230,241 @@ m_step2  <- mplusObject(
   ## 4 models; 2 outcomes and 2 slope coefficients). This can be done by
   ## commenting out all but one test and then making multiple input/output files.
    
- "!m01=m02;    !!! Distal outcome omnibus Wald test for `read_tes` !!!
-  !m02=m03;
-
-  !s01=s02;   !!! Slope difference omnibus Wald test for `read_tes on lunch_pr` !!!
-  !s02=s03;
+ "m01=m02;    !!! Distal outcome omnibus Wald test for `read_tes` !!!
+  m02=m03;
   
-  m1=m2;       !!! Distal outcome omnibus Wald test for `math_tes` !!!
-  m2=m3;       
+  ! m1=m2;       !!! Distal outcome omnibus Wald test for `math_tes` !!!
+  ! m2=m3;       !!! COMMENTED OUT: RUN SEPRATELY !!!
 
-  !s1=s2;      !!! Slope difference omnibus Wald test `math_tes on lunch_pr` !!!
-  !s2=s3;  
- 
- ",
+  ",
  
   usevariables = colnames(savedata), 
   rdata = savedata)
 
 m_step2_fit <- mplusModeler(m_step2,
-                 dataout=here("bch_mplus", "step2_bch_moderation.dat"), 
-                 modelout=here("bch_mplus", "step2_bch_moderation.inp"), 
+                 dataout=here("bch_mplus", "step2_bch_distals.dat"), 
+                 modelout=here("bch_mplus", "step2_bch_distals.inp"), 
                  check=TRUE, run = TRUE, hashfilename = FALSE)
 ```
 
-**End of 2-Step BCH Procedure**
+> NOTE: Result is inadmissible due to a negative variance estimated for the covariate parameter. This is a known limitation when using the BCH in the context of mixture models with high classification error (low entropy). Such models produce negative BCH weights which often cause the solution to be inadmissible. In this case the 3-step ML approach should be used. 
+
+**End of 2-Step BCH procedure.**
+
+# --------------------------------------------------------------------------------------
+
+## EXAMPLE 2: Harassment & Discipline LCA indicators (4-class solution)
+
+# --------------------------------------------------------------------------------------
+
+Read in CSV data file from the `data` subfolder
+```{r}
+
+bch_ex2_data <- read_csv(here("data", "crdc_example2_data.csv"))
+
+```
+
+# --------------------------------------------------------------------------------------
+
+```{r, eval=TRUE, echo=FALSE}
+### Take a look at the indicators that compose the LCA (EXAMPLE 2) ###
+
+tribble(
+~"Name", ~"Description", 
+#----------|-------------|,
+"report_dis","Number of students harassed or bullied on the basis of disability" ,
+"discip_dis","Number of students disciplined for bullying or harassment on the basis of disability" ,
+"report_race","Number of students harassed or bullied on the basis of race, color, or national origin " ,
+"discip_race","Number of students disciplined for bullying or harassment on the basis of race, color, or national origin ",
+"report_sex","Number of students harassed or bullied on the basis of sex" ,
+"discip_sex","Number of students disciplined for bullying or harassment on the basis of sex" ,
+"lunch_program","School has a lunch program (0=No lunch program, 1=Lunch program at school).",
+"read_test","Average reading test assessment score at school",
+"math_test","Average math test assessment score at school" ) %>% 
+gt() %>% 
+tab_header(title = md("**LCA Indicators & Auxiliary Variables: Harassment & Discipline Example**"),
+           subtitle = md("&nbsp;")) %>%
+tab_row_group(group = "LCA Indicator Variables", rows = 1:6) %>% 
+tab_row_group(group = "Auxiliary Variables", rows = 7:9) %>%
+row_group_order(groups = c("LCA Indicator Variables","Auxiliary Variables")) %>% 
+tab_options(column_labels.font.weight = "bold", row_group.font.weight = "bold") %>% 
+tab_footnote(
+  footnote = md("*Note*. Data souce is from the public-use dataset, the *Civil Rights Data Collection* (CRDC; US Department of Education Office for Civil Rights, 2014)"),locations = cells_title())
+
+```
+
+### Step 1 - Estimate the unconditional model with all covariate & distal outcome variables mentioned in the `auxiliary` statement. 
+
+```{r}
+m_step1  <- mplusObject(
+  TITLE = "Step1_bch_automation (example 2)", 
+  VARIABLE = 
+   "categorical = report_dis discip_dis report_race discip_race report_sex discip_sex; 
+   
+    usevar = report_dis discip_dis report_race discip_race report_sex discip_sex;
+    
+    classes = c(4); 
+    
+    !!! NOTE: All auxiliary variables to be considered in the final model should be listed here !!!
+    auxiliary = 
+    lunch_program read_test math_test;",
+  
+  ANALYSIS = 
+   "estimator = mlr; 
+    type = mixture; 
+    starts = 500 100;",
+  
+  SAVEDATA = 
+   "File=bch_crdc_ex2.dat;
+    save=bchweights; 
+    format=free;
+    Missflag= 999;",
+  
+  usevariables = colnames(bch_ex2_data),
+  rdata = bch_ex2_data)
+
+m_step1_fit <- mplusModeler(m_step1,
+                 dataout=here("bch_ex2_mplus", "step1_bch_ex2.dat"),
+                 modelout=here("bch_ex2_mplus", "step1_bch_ex2.inp") ,
+                 check=TRUE, run = TRUE, hashfilename = FALSE)
+```
+
+# --------------------------------------------------------------------------------------
+
+### Extract saved data from the step 1 unconditional model.
+
+# --------------------------------------------------------------------------------------
+
+
+Extract saved data from the step 1 model `mplusObject` named "m_step1_fit"
+```{r}
+
+savedata <- as.data.frame(m_step1_fit[["results"]]
+                                     [["savedata"]])
+```
+
+# --------------------------------------------------------------------------------------
+
+### Step 2 - Estimate the model with auxiliary variables using BCH weights 
+
+Example demonstrated is a model with a covariate control variable & two distal outcomes.
+
+# --------------------------------------------------------------------------------------
+
+**Specification details:**
+
+- This example contains two distal outcome variables (`read_tes` & `math_tes`) and one binary covariate (`lunch_pr`).
+- Under each class-specific statement (e.g., `%C#1%`) the distal outcome is mentioned to estimate the intercept mean (in square brackets) & variance parameters. 
+- Note that the binary covariate is centered so that reported distal means (intercepts) are estimated at the weighted average of `lunch_pr`.
+
+```{r}
+
+m_step2  <- mplusObject(
+  TITLE = "Step2_bch_automation (example 2)", 
+  
+  VARIABLE = 
+ "usevar = BCHW1-BCHW4 lunch_pr read_tes math_tes;
+  missing are all (999); 
+  classes = c(4); 
+  training = BCHW1-BCHW4(bch); ",
+ 
+  DEFINE =
+  "center lunch_pr (grandmean);",
+  
+  ANALYSIS = 
+ "estimator = mlr; 
+  type = mixture; 
+  starts = 0;",
+  
+  MODEL =
+ "!!! DISTAL OUTCOMES = read_tes math_tes !!!
+  !!! COVARIATE = lunch_pr !!!
+  
+  %OVERALL%
+  
+  c on lunch_pr;                 !!! estimate covariate as predictor of latent class !!!
+  read_tes;
+  math_tes;
+
+  %C#1%
+
+  [read_tes](m01);               !!! estimate conditional intercept mean !!!
+  read_tes;                      !!! estimate conditional intercept variance !!!
+
+  [math_tes] (m1);
+  math_tes;
+
+  %C#2%
+
+  [read_tes](m02);
+  read_tes;
+
+  [math_tes] (m2);
+  math_tes;
+  
+  %C#3%
+
+  [read_tes](m03);
+  read_tes;
+
+  [math_tes] (m3);
+  math_tes;  
+ 
+  %C#4%
+
+  [read_tes](m04);
+  read_tes;
+
+  [math_tes] (m4);
+  math_tes;  ",
+  
+  MODELCONSTRAINT = 
+ "New (rdiff12 rdiff13 rdiff14 rdiff23 
+  rdiff24 rdiff34 mdiff12 mdiff13 mdiff14
+  mdiff23 mdiff24 mdiff34
+  );
+
+  rdiff12 = m1-m2;   mdiff12 = m01-m02;
+  rdiff13 = m1-m3;   mdiff13 = m01-m03;
+  rdiff14 = m1-m4;   mdiff14 = m01-m04;
+  rdiff23 = m2-m3;   mdiff23 = m02-m03; 
+  rdiff24 = m2-m4;   mdiff24 = m02-m04; 
+  rdiff34 = m3-m4;   mdiff34 = m03-m04; 
+ ",
+  
+  MODELTEST =
+  ## NOTE: Only a single Wald test can be conducted per model run. Therefore, 
+  ## this example requires running separate models for each omnibus test (e.g.,
+  ## 4 models; 2 outcomes and 2 slope coefficients). This can be done by
+  ## commenting out all but one test and then making multiple input/output files.
+   
+ "m01=m02;    !!! Distal outcome omnibus Wald test for `read_tes` !!!
+  m02=m03;
+  m03=m04;
+ 
+  ! m1=m2;    !!! Distal outcome omnibus Wald test for `math_tes` !!!
+  ! m2=m3;    !!! COMMENTED OUT: RUN SEPRATELY !!!
+  ! m3=m4;
+
+  ",
+ 
+  usevariables = colnames(savedata), 
+  rdata = savedata)
+
+m_step2_fit <- mplusModeler(m_step2,
+                 dataout=here("bch_ex2_mplus", "step2_bch_ex2.dat"), 
+                 modelout=here("bch_ex2_mplus", "step2_bch_ex2.inp"), 
+                 check=TRUE, run = TRUE, hashfilename = FALSE)
+```
+
+**End of 2-Step BCH procedure.**
+
+# --------------------------------------------------------------------------------------
+
+```{r, echo=FALSE, eval=TRUE, fig.align='center', out.width="100%"}
+
+include_graphics("figures/Distal_barplot_ex2.png")
+```
 
 # --------------------------------------------------------------------------------------
 
@@ -303,6 +475,8 @@ m_step2_fit <- mplusModeler(m_step2,
 # --------------------------------------------------------------------------------------
 
 ## References
+
+**How to reference this tutorial:** Garber, A. C. (2021). BCH Two-step Auxiliary Variable Integration Using MplusAutomation. Retrieved from [$\color{blue}{\text{https://psyarxiv.com/wmfcj}}$](https://psyarxiv.com/wmfcj)
 
 # --------------------------------------------------------------------------------------
 

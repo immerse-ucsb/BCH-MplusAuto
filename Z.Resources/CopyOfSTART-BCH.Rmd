@@ -464,7 +464,7 @@ m_step2_fit <- mplusModeler(m_step2,
 
 # --------------------------------------------------------------------------------------
 
-```{r, echo=FALSE, eval=TRUE, fig.align='center', out.width="100%"}
+```{r, echo=FALSE, eval=TRUE, fig.align='center', out.width="40%"}
 
 include_graphics("figures/Distal_barplot_ex2.png")
 ```
