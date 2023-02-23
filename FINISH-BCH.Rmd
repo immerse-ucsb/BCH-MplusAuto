@@ -29,7 +29,7 @@ The Institute of Mixture Modeling for Equity-Oriented Researchers, Scholars, and
 
 # --------------------------------------------------------------------------------------
 
-> This `R` tutorial automates the BCH two-step axiliary variable procedure (Bolk, Croon, Hagenaars, 2004) using the `MplusAutomation` package (Hallquist & Wiley, 2018) to estimate models and extract relevant parameters. To learn more about auxiliary variable integration methods and why multi-step methods are necessary for producing un-biased estimates see Asparouhov & Muthén (2014). 
+> This `R` tutorial automates the BCH two-step auxiliary variable procedure (Bolk, Croon, Hagenaars, 2004) using the `MplusAutomation` package (Hallquist & Wiley, 2018) to estimate models and extract relevant parameters. To learn more about auxiliary variable integration methods and why multi-step methods are necessary for producing un-biased estimates see Asparouhov & Muthén (2014). 
 
 # --------------------------------------------------------------------------------------
 
